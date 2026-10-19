@@ -173,6 +173,17 @@ function ScheduleTab({ teams, sched }: { teams: Team[]; sched: ScheduleSettings 
     setBreakTime(r.breakTime);
     setMsg({ ok: true, t: "Times generated. Review, then save." });
   }
+  function randomize() {
+    const next = [...items];
+    for (let i = next.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [next[i], next[j]] = [next[j], next[i]];
+    }
+    const r = buildSchedule(start, Number(slotMin), Number(breakMin), next.length);
+    setItems(r ? next.map((x, i) => ({ ...x, time: r.times[i] })) : next);
+    if (r) setBreakTime(r.breakTime);
+    setMsg({ ok: true, t: r ? "Order randomized and times regenerated. Save to keep it." : "Order randomized. Set a start time and generate times, then save." });
+  }
   async function save() {
     const err = await call("PUT", "/api/schedule", {
       order: items.map((i) => ({ id: i.id, time: i.time })),
@@ -189,6 +200,7 @@ function ScheduleTab({ teams, sched }: { teams: Team[]; sched: ScheduleSettings 
         <label style={{ minWidth: 0 }}>Slot (min)</label><input type="number" min={1} style={{ width: 80 }} value={slotMin} onChange={(e) => setSlotMin(e.target.value)} />
         <label style={{ minWidth: 0 }}>Break (min)</label><input type="number" min={0} style={{ width: 80 }} value={breakMin} onChange={(e) => setBreakMin(e.target.value)} />
         <button onClick={generate}>Generate times</button>
+        <button onClick={randomize}>Randomize order</button>
       </div>
       <p className="sub">The break falls between presentation {BREAK_AFTER} and {BREAK_AFTER + 1}. Set break to 0 for none.</p>
       {items.map((it, i) => (
