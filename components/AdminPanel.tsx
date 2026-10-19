@@ -23,12 +23,13 @@ export default function AdminPanel(p: { teams: Team[]; reviews: Review[]; judges
         <button onClick={async () => { await call("POST", "/api/admin/logout"); router.refresh(); }}>Sign out</button>
       </div>
       <div className="tabs" role="tablist">
-        {["teams", "judges", "results"].map((t) => (
+        {["teams", "schedule", "judges", "results"].map((t) => (
           <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)}>{t[0].toUpperCase() + t.slice(1)}</button>
         ))}
       </div>
       {tab === "teams" && <TeamsTab teams={p.teams} />}
-            {tab === "judges" && <JudgesTab judges={p.judges} />}
+            {tab === "schedule" && <ScheduleTab teams={p.teams} />}
+      {tab === "judges" && <JudgesTab judges={p.judges} />}
       {tab === "results" && <ResultsTab reviews={p.reviews} teams={p.teams} revealed={p.revealed} />}
     </>
   );
@@ -53,7 +54,7 @@ function TeamForm({ team }: { team: Team }) {
   const router = useRouter();
   const [f, setF] = useState({
     name: team.name, project_name: team.project_name, description: team.description, status: team.status,
-    tags: team.tags.join(", "), slot_order: team.slot_order?.toString() ?? "", slot_time: team.slot_time,
+    tags: team.tags.join(", "), slot_order: team.slot_order?.toString() ?? "", slot_time: team.slot_time, room: team.room,
     members: team.members.map((m) => m.name).join("\n"),
     links: KINDS.map((k) => ({ kind: k, url: team.links.find((l) => l.kind === k)?.url ?? "" })),
   });
@@ -70,6 +71,7 @@ function TeamForm({ team }: { team: Team }) {
     <div className="panel">
       <div className="row"><label>Team name</label><input value={f.name} onChange={(e) => set("name", e.target.value)} /></div>
       <div className="row"><label>Project name</label><input value={f.project_name} onChange={(e) => set("project_name", e.target.value)} /></div>
+      <div className="row"><label>Room</label><input value={f.room} placeholder="Where the team is working" onChange={(e) => set("room", e.target.value)} /></div>
       <div className="row"><label>Status</label>
         <select value={f.status} onChange={(e) => set("status", e.target.value)}>
           <option value="not_started">Not started</option><option value="in_progress">In progress</option><option value="demo_ready">Demo-ready</option>
@@ -140,5 +142,52 @@ function ResultsTab({ reviews, teams, revealed }: { reviews: Review[]; teams: Te
         );
       })}
     </>
+  );
+}
+
+function ScheduleTab({ teams }: { teams: Team[] }) {
+  const router = useRouter();
+  const sorted = [...teams].sort((a, b) => (a.slot_order ?? 1e9) - (b.slot_order ?? 1e9) || a.number - b.number);
+  const [items, setItems] = useState(sorted.map((t) => ({ id: t.id, label: `Team ${t.number} – ${t.name}`, time: t.slot_time })));
+  const [drag, setDrag] = useState<number | null>(null);
+  const [msg, setMsg] = useState<{ ok: boolean; t: string } | null>(null);
+  function drop(to: number) {
+    if (drag === null || drag === to) return;
+    setItems((cur) => {
+      const next = [...cur];
+      const [m] = next.splice(drag, 1);
+      next.splice(to, 0, m);
+      return next;
+    });
+    setDrag(null);
+  }
+  async function save() {
+    const err = await call("PUT", "/api/schedule", { order: items.map((i) => ({ id: i.id, time: i.time })) });
+    setMsg({ ok: !err, t: err ?? "Saved" });
+    if (!err) router.refresh();
+  }
+  return (
+    <div className="panel">
+      <p className="sub">Drag rows to set the presentation order, set a time for each, then save.</p>
+      {items.map((it, i) => (
+        <div
+          key={it.id}
+          className="row"
+          draggable
+          onDragStart={() => setDrag(i)}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={() => drop(i)}
+          onDragEnd={() => setDrag(null)}
+          style={{ padding: 8, border: "1px solid var(--border)", borderRadius: 8, cursor: "grab", opacity: drag === i ? 0.4 : 1 }}
+        >
+          <span aria-hidden>⠿</span>
+          <strong style={{ width: 28 }}>{i + 1}</strong>
+          <span style={{ flex: 1, minWidth: 180 }}>{it.label}</span>
+          <input value={it.time} placeholder="Time, e.g. 10:30 AM"
+            onChange={(e) => setItems((cur) => cur.map((x) => (x.id === it.id ? { ...x, time: e.target.value } : x)))} />
+        </div>
+      ))}
+      <div className="row"><button className="primary" onClick={save}>Save schedule</button>{msg && <span className={msg.ok ? "msg" : "err"}>{msg.t}</span>}</div>
+    </div>
   );
 }

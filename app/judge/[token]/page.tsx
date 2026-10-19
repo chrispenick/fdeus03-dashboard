@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { query } from "@/lib/db";
 import { getTeams } from "@/lib/data";
 import JudgeForm from "@/components/JudgeForm";
+import JudgeAdminLink from "@/components/JudgeAdminLink";
 
 export const dynamic = "force-dynamic";
 export const metadata = { robots: { index: false } };
@@ -18,6 +19,7 @@ export default async function JudgePage({ params }: { params: Promise<{ token: s
     <>
       <h1>Judging — {judge.name}</h1>
       <p className="sub">Choose Pass, Pass with notes, or Not pass for each team. Notes are visible to organizers only. You can revise any time.</p>
+      <p><JudgeAdminLink token={token} /></p>
       <JudgeForm token={token} teams={teams.map((t) => ({ id: t.id, number: t.number, name: t.name, project: t.project_name }))} initial={reviews} />
     </>
   );

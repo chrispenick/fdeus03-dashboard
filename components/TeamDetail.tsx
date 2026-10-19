@@ -13,6 +13,7 @@ export default function TeamDetail({ team }: { team: Team }) {
       <h2 style={{ margin: "4px 0" }}>{team.name}</h2>
       <p className="proj">{team.project_name || "Project TBD"}</p>
       <p><StatusBadge status={team.status} /> {team.slot_time && <span className="sub"> Presents {team.slot_time}</span>}</p>
+      {team.room && <p><strong>Room:</strong> {team.room}</p>}
       {team.description && <p>{team.description}</p>}
       <p>{team.tags.map((t) => <span className="tag" key={t}>{t}</span>)}</p>
       <h4>Members ({team.members.length})</h4>

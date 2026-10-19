@@ -2,7 +2,7 @@ export type Status = "not_started" | "in_progress" | "demo_ready";
 export type Link = { id: number; kind: "repo" | "demo" | "slides" | "chat"; url: string };
 export type Team = {
   id: number; number: number; breed: string; name: string; project_name: string; description: string;
-  status: Status; tags: string[]; slot_order: number | null; slot_time: string;
+  status: Status; tags: string[]; slot_order: number | null; slot_time: string; room: string;
   members: { id: number; name: string }[]; links: Link[];
 };
 

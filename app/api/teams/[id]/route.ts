@@ -19,10 +19,10 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   try {
     await client.query("BEGIN");
     await client.query(
-      `UPDATE teams SET name=$2, project_name=$3, description=$4, status=$5, tags=$6, slot_order=$7, slot_time=$8 WHERE id=$1`,
+      `UPDATE teams SET name=$2, project_name=$3, description=$4, status=$5, tags=$6, slot_order=$7, slot_time=$8, room=$9 WHERE id=$1`,
       [id, String(b.name).trim(), b.project_name ?? "", b.description ?? "", b.status,
        (b.tags ?? []).map((t: string) => t.trim()).filter(Boolean),
-       b.slot_order === "" || b.slot_order == null ? null : Number(b.slot_order), b.slot_time ?? ""]
+       b.slot_order === "" || b.slot_order == null ? null : Number(b.slot_order), b.slot_time ?? "", String(b.room ?? "").trim()]
     );
     await client.query("DELETE FROM members WHERE team_id=$1", [id]);
     for (const m of members) await client.query("INSERT INTO members (team_id,name) VALUES ($1,$2)", [id, m]);

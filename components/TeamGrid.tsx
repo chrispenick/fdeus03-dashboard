@@ -18,7 +18,7 @@ export default function TeamGrid({ teams }: { teams: Team[] }) {
       (t) =>
         (!status || t.status === status) &&
         (!tag || t.tags.includes(tag)) &&
-        (!n || [t.name, t.breed, t.project_name, t.description, ...t.tags, ...t.members.map((m) => m.name)].join(" ").toLowerCase().includes(n))
+        (!n || [t.name, t.room, t.breed, t.project_name, t.description, ...t.tags, ...t.members.map((m) => m.name)].join(" ").toLowerCase().includes(n))
     );
     const key: Record<string, (a: Team, b: Team) => number> = {
       number: (a, b) => a.number - b.number,
@@ -61,7 +61,7 @@ export default function TeamGrid({ teams }: { teams: Team[] }) {
               <div className="num">Team {t.number} · {t.breed}</div>
               <h3>{t.name}</h3>
               <p className="proj">{t.project_name || "Project TBD"}</p>
-              <StatusBadge status={t.status} />
+              <StatusBadge status={t.status} />{t.room && <span className="sub"> · {t.room}</span>}
               <ul className="members">{t.members.map((m) => <li key={m.id}>{m.name}</li>)}</ul>
             </button>
           ))}
