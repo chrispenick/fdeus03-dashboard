@@ -1,5 +1,6 @@
 import { query } from "./db";
 import type { Team, Verdict } from "./types";
+import type { ScheduleSettings } from "./schedule";
 export * from "./types";
 
 export async function getTeams(): Promise<Team[]> {
@@ -40,4 +41,13 @@ export async function getResults(): Promise<Result[]> {
     const n = (v: Verdict) => mine.filter((r) => r.verdict === v).length;
     return { team, pass: n("pass"), pass_notes: n("pass_notes"), not_pass: n("not_pass") };
   });
+}
+
+export async function getScheduleSettings(): Promise<ScheduleSettings> {
+  const rows = await query("SELECT key, value FROM settings WHERE key LIKE 'schedule_%'");
+  const v = (k: string) => rows.find((r) => r.key === k)?.value ?? "";
+  return {
+    start: v("schedule_start"), slotMin: Number(v("schedule_slot_min")) || 15,
+    breakMin: Number(v("schedule_break_min")) || 0, breakTime: v("schedule_break_time"),
+  };
 }

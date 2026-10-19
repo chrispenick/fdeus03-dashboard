@@ -1,8 +1,9 @@
 "use client";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { useRouter } from "next/navigation";
 import { VERDICT_LABEL, type Team } from "@/lib/types";
 import type { Review } from "@/lib/data";
+import { BREAK_AFTER, buildSchedule, type ScheduleSettings } from "@/lib/schedule";
 
 type Judge = { id: number; name: string; token: string };
 const KINDS = ["repo", "demo", "slides", "chat"] as const;
@@ -13,7 +14,7 @@ async function call(method: string, url: string, body?: unknown) {
   return r.ok ? null : (j.error ?? "Request failed");
 }
 
-export default function AdminPanel(p: { teams: Team[]; reviews: Review[]; judges: Judge[]; revealed: boolean }) {
+export default function AdminPanel(p: { teams: Team[]; reviews: Review[]; judges: Judge[]; revealed: boolean; sched: ScheduleSettings }) {
   const [tab, setTab] = useState("teams");
   const router = useRouter();
   return (
@@ -28,7 +29,7 @@ export default function AdminPanel(p: { teams: Team[]; reviews: Review[]; judges
         ))}
       </div>
       {tab === "teams" && <TeamsTab teams={p.teams} />}
-            {tab === "schedule" && <ScheduleTab teams={p.teams} />}
+            {tab === "schedule" && <ScheduleTab teams={p.teams} sched={p.sched} />}
       {tab === "judges" && <JudgesTab judges={p.judges} />}
       {tab === "results" && <ResultsTab reviews={p.reviews} teams={p.teams} revealed={p.revealed} />}
     </>
@@ -145,11 +146,15 @@ function ResultsTab({ reviews, teams, revealed }: { reviews: Review[]; teams: Te
   );
 }
 
-function ScheduleTab({ teams }: { teams: Team[] }) {
+function ScheduleTab({ teams, sched }: { teams: Team[]; sched: ScheduleSettings }) {
   const router = useRouter();
   const sorted = [...teams].sort((a, b) => (a.slot_order ?? 1e9) - (b.slot_order ?? 1e9) || a.number - b.number);
   const [items, setItems] = useState(sorted.map((t) => ({ id: t.id, label: `Team ${t.number} – ${t.name}`, time: t.slot_time })));
   const [drag, setDrag] = useState<number | null>(null);
+  const [start, setStart] = useState(sched.start);
+  const [slotMin, setSlotMin] = useState(String(sched.slotMin));
+  const [breakMin, setBreakMin] = useState(String(sched.breakMin));
+  const [breakTime, setBreakTime] = useState(sched.breakTime);
   const [msg, setMsg] = useState<{ ok: boolean; t: string } | null>(null);
   function drop(to: number) {
     if (drag === null || drag === to) return;
@@ -161,17 +166,37 @@ function ScheduleTab({ teams }: { teams: Team[] }) {
     });
     setDrag(null);
   }
+  function generate() {
+    const r = buildSchedule(start, Number(slotMin), Number(breakMin), items.length);
+    if (!r) return setMsg({ ok: false, t: "Enter a start date/time and a slot length in minutes" });
+    setItems((cur) => cur.map((x, i) => ({ ...x, time: r.times[i] })));
+    setBreakTime(r.breakTime);
+    setMsg({ ok: true, t: "Times generated. Review, then save." });
+  }
   async function save() {
-    const err = await call("PUT", "/api/schedule", { order: items.map((i) => ({ id: i.id, time: i.time })) });
+    const err = await call("PUT", "/api/schedule", {
+      order: items.map((i) => ({ id: i.id, time: i.time })),
+      settings: { start, slotMin: Number(slotMin), breakMin: Number(breakMin), breakTime: Number(breakMin) > 0 ? breakTime : "" },
+    });
     setMsg({ ok: !err, t: err ?? "Saved" });
     if (!err) router.refresh();
   }
   return (
     <div className="panel">
-      <p className="sub">Drag rows to set the presentation order, set a time for each, then save.</p>
+      <p className="sub">Enter a start time and slot length to generate the schedule, or edit times by hand. Drag rows to reorder (regenerate after reordering).</p>
+      <div className="row">
+        <label>Start</label><input type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} />
+        <label style={{ minWidth: 0 }}>Slot (min)</label><input type="number" min={1} style={{ width: 80 }} value={slotMin} onChange={(e) => setSlotMin(e.target.value)} />
+        <label style={{ minWidth: 0 }}>Break (min)</label><input type="number" min={0} style={{ width: 80 }} value={breakMin} onChange={(e) => setBreakMin(e.target.value)} />
+        <button onClick={generate}>Generate times</button>
+      </div>
+      <p className="sub">The break falls between presentation {BREAK_AFTER} and {BREAK_AFTER + 1}. Set break to 0 for none.</p>
       {items.map((it, i) => (
+        <Fragment key={it.id}>
+        {i === BREAK_AFTER && Number(breakMin) > 0 && (
+          <div className="row" style={{ padding: 8, fontStyle: "italic" }}>Break{breakTime && ` – ${breakTime}`}</div>
+        )}
         <div
-          key={it.id}
           className="row"
           draggable
           onDragStart={() => setDrag(i)}
@@ -186,6 +211,7 @@ function ScheduleTab({ teams }: { teams: Team[] }) {
           <input value={it.time} placeholder="Time, e.g. 10:30 AM"
             onChange={(e) => setItems((cur) => cur.map((x) => (x.id === it.id ? { ...x, time: e.target.value } : x)))} />
         </div>
+        </Fragment>
       ))}
       <div className="row"><button className="primary" onClick={save}>Save schedule</button>{msg && <span className={msg.ok ? "msg" : "err"}>{msg.t}</span>}</div>
     </div>
