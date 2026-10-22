@@ -29,6 +29,8 @@ button.card:hover{border-top-color:var(--orange);box-shadow:0 4px 14px rgba(77,2
 .proj{color:var(--muted);font-style:italic;margin:0 0 8px}
 .badge{display:inline-block;border-radius:999px;padding:1px 10px;font-size:.78rem;font-weight:700;border:1px solid currentColor}
 .s-not_started{color:var(--muted)}.s-in_progress{color:var(--warn)}.s-demo_ready{color:var(--ok)}
+.p-now{color:var(--ok)}.p-next{color:var(--warn)}.p-done,.p-upcoming{color:var(--muted)}
+tr.row-now td{background:rgba(46,160,67,.12)}tr.row-done td{opacity:.55}
 .tag{display:inline-block;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:0 7px;font-size:.78rem;margin:2px 4px 2px 0}
 .members{margin:8px 0 0;padding-left:18px;color:var(--muted);font-size:.9rem}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:20}

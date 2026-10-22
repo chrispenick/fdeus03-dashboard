@@ -1,6 +1,16 @@
 import { isAdmin, unauthorized } from "@/lib/auth";
 import { pool } from "@/lib/db";
 
+export async function PATCH(req: Request) {
+  if (!(await isAdmin())) return unauthorized();
+  const { currentSlot } = await req.json().catch(() => ({}));
+  const [{ n }] = (await pool.query("SELECT COUNT(*)::int AS n FROM teams")).rows;
+  if (!Number.isInteger(currentSlot) || currentSlot < 0 || currentSlot > n + 1)
+    return Response.json({ error: "currentSlot must be an integer from 0 to " + (n + 1) }, { status: 400 });
+  await pool.query("INSERT INTO settings (key,value) VALUES ('schedule_current_slot',$1) ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value", [String(currentSlot)]);
+  return Response.json({ ok: true });
+}
+
 export async function PUT(req: Request) {
   if (!(await isAdmin())) return unauthorized();
   const { order, settings } = await req.json();

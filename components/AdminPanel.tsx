@@ -3,7 +3,7 @@ import { Fragment, useState } from "react";
 import { useRouter } from "next/navigation";
 import { VERDICT_LABEL, GRADE_SECTIONS, GRADE_OPTIONS, capstoneResult, type Team } from "@/lib/types";
 import type { Review } from "@/lib/data";
-import { BREAK_AFTER, buildSchedule, type ScheduleSettings } from "@/lib/schedule";
+import { BREAK_AFTER, STATE_LABEL, buildSchedule, presentationState, type ScheduleSettings } from "@/lib/schedule";
 
 type Judge = { id: number; name: string; token: string };
 const KINDS = ["repo", "demo", "slides", "chat"] as const;
@@ -209,6 +209,14 @@ function ScheduleTab({ teams, sched }: { teams: Team[]; sched: ScheduleSettings 
     if (r) setBreakTime(r.breakTime);
     setMsg({ ok: true, t: r ? "Order randomized and times regenerated. Save to keep it." : "Order randomized. Set a start time and generate times, then save." });
   }
+  const cur = sched.currentSlot;
+  const total = items.length;
+  async function setCurrent(n: number) {
+    const err = await call("PATCH", "/api/schedule", { currentSlot: Math.max(0, Math.min(total + 1, n)) });
+    setMsg({ ok: !err, t: err ?? "Live position updated" });
+    if (!err) router.refresh();
+  }
+  const labelAt = (n: number) => items[n - 1]?.label ?? "–";
   async function save() {
     const err = await call("PUT", "/api/schedule", {
       order: items.map((i) => ({ id: i.id, time: i.time })),
@@ -219,6 +227,17 @@ function ScheduleTab({ teams, sched }: { teams: Team[]; sched: ScheduleSettings 
   }
   return (
     <div className="panel">
+      <div className="row" style={{ padding: 8, border: "1px solid var(--border)", borderRadius: 8 }}>
+        <strong>Live control</strong>
+        <span style={{ flex: 1, minWidth: 220 }}>
+          {cur > total ? "All presentations complete" : `Now: ${cur === 0 ? "not started" : labelAt(cur)} · Next: ${cur + 1 <= total ? labelAt(cur + 1) : "–"}`}
+        </span>
+        {cur === 0 && <button className="primary" onClick={() => setCurrent(1)}>Start</button>}
+        <button disabled={cur === 0} onClick={() => setCurrent(cur - 1)}>Previous</button>
+        <button disabled={cur > total} onClick={() => setCurrent(cur + 1)}>Next</button>
+        <button disabled={cur === 0} onClick={() => setCurrent(0)}>Reset</button>
+      </div>
+      <p className="sub">Live position follows the saved presentation order; save any reordering before using it.</p>
       <p className="sub">Enter a start time and slot length to generate the schedule, or edit times by hand. Drag rows to reorder (regenerate after reordering).</p>
       <div className="row">
         <label>Start</label><input type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} />
@@ -245,8 +264,10 @@ function ScheduleTab({ teams, sched }: { teams: Team[]; sched: ScheduleSettings 
           <span aria-hidden>⠿</span>
           <strong style={{ width: 28 }}>{i + 1}</strong>
           <span style={{ flex: 1, minWidth: 180 }}>{it.label}</span>
+          {presentationState(i + 1, cur) !== "upcoming" && <span className={`badge p-${presentationState(i + 1, cur)}`}>{STATE_LABEL[presentationState(i + 1, cur)]}</span>}
           <input value={it.time} placeholder="Time, e.g. 10:30 AM"
-            onChange={(e) => setItems((cur) => cur.map((x) => (x.id === it.id ? { ...x, time: e.target.value } : x)))} />
+            onChange={(e) => setItems((c) => c.map((x) => (x.id === it.id ? { ...x, time: e.target.value } : x)))} />
+          <button disabled={cur === i + 1} onClick={() => setCurrent(i + 1)}>Set as current</button>
         </div>
         </Fragment>
       ))}

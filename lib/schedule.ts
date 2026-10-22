@@ -1,6 +1,18 @@
 export const BREAK_AFTER = 6; // first half = presentations 1-6, second half = 7-12
 
-export type ScheduleSettings = { start: string; slotMin: number; breakMin: number; breakTime: string };
+export type ScheduleSettings = { start: string; slotMin: number; breakMin: number; breakTime: string; currentSlot: number };
+
+export type PresentationState = "done" | "now" | "next" | "upcoming";
+export const STATE_LABEL: Record<PresentationState, string> = { done: "Presented", now: "Presenting now", next: "Up next", upcoming: "Upcoming" };
+
+// currentSlot 0 = not started (slot 1 is "next"); currentSlot > team count = all done.
+export function presentationState(slotOrder: number | null, currentSlot: number): PresentationState {
+  if (slotOrder == null) return "upcoming";
+  if (slotOrder < currentSlot) return "done";
+  if (slotOrder === currentSlot) return "now";
+  if (slotOrder === currentSlot + 1) return "next";
+  return "upcoming";
+}
 
 const dateFmt = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 const timeFmt = (d: Date) => d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });

@@ -49,5 +49,6 @@ export async function getScheduleSettings(): Promise<ScheduleSettings> {
   return {
     start: v("schedule_start"), slotMin: Number(v("schedule_slot_min")) || 15,
     breakMin: Number(v("schedule_break_min")) || 0, breakTime: v("schedule_break_time"),
+    currentSlot: Number(v("schedule_current_slot")) || 0,
   };
 }
