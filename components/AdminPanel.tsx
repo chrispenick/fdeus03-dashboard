@@ -1,7 +1,7 @@
 "use client";
 import { Fragment, useState } from "react";
 import { useRouter } from "next/navigation";
-import { VERDICT_LABEL, type Team } from "@/lib/types";
+import { VERDICT_LABEL, GRADE_SECTIONS, GRADE_OPTIONS, capstoneResult, type Team } from "@/lib/types";
 import type { Review } from "@/lib/data";
 import { BREAK_AFTER, buildSchedule, type ScheduleSettings } from "@/lib/schedule";
 
@@ -59,11 +59,17 @@ function TeamForm({ team }: { team: Team }) {
     members: team.members.map((m) => m.name).join("\n"),
     links: KINDS.map((k) => ({ kind: k, url: team.links.find((l) => l.kind === k)?.url ?? "" })),
   });
+  const [grades, setGrades] = useState<Record<string, string>>(team.grades ?? {});
+  const [gradeNotes, setGradeNotes] = useState(team.grade_notes ?? "");
+  const [notes, setNotes] = useState<Record<string, string>>(Object.fromEntries(team.members.map((m) => [m.name, m.notes ?? ""])));
+  const names = f.members.split("\n").map((n) => n.trim()).filter(Boolean);
+  const result = capstoneResult(grades);
   const [msg, setMsg] = useState<{ ok: boolean; t: string } | null>(null);
   const set = (k: string, v: unknown) => setF((s) => ({ ...s, [k]: v }));
   async function save() {
     const err = await call("PUT", `/api/teams/${team.id}`, {
-      ...f, tags: f.tags.split(","), members: f.members.split("\n"),
+      ...f, tags: f.tags.split(","), members: names.map((name) => ({ name, notes: notes[name] ?? "" })),
+      grades, grade_notes: gradeNotes,
     });
     setMsg({ ok: !err, t: err ?? "Saved" });
     if (!err) router.refresh();
@@ -78,6 +84,19 @@ function TeamForm({ team }: { team: Team }) {
           <option value="not_started">Not started</option><option value="in_progress">In progress</option><option value="demo_ready">Demo-ready</option>
         </select>
       </div>
+      <h4>Capstone grading</h4>
+      {GRADE_SECTIONS.map((s) => (
+        <div className="row" key={s.key}><label>{s.label}</label>
+          <select value={grades[s.key] ?? ""} onChange={(e) => setGrades((g) => ({ ...g, [s.key]: e.target.value }))}>
+            <option value="">Not graded</option>
+            {Object.entries(GRADE_OPTIONS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
+        </div>
+      ))}
+      <div className="row"><label>Team result</label>
+        <strong>{result === "pass" ? "Pass" : result === "not_pass" ? "Not pass" : "Pending"}</strong></div>
+      <div className="row"><label>Team notes</label></div>
+      <textarea value={gradeNotes} onChange={(e) => setGradeNotes(e.target.value)} />
       <div className="row"><label>Description</label></div>
       <textarea value={f.description} onChange={(e) => set("description", e.target.value)} />
       <div className="row"><label>Tags</label><input value={f.tags} placeholder="comma, separated" onChange={(e) => set("tags", e.target.value)} /></div>
@@ -89,6 +108,12 @@ function TeamForm({ team }: { team: Team }) {
       ))}
       <div className="row"><label>Members (one per line)</label></div>
       <textarea value={f.members} onChange={(e) => set("members", e.target.value)} />
+      {names.map((n) => (
+        <div key={n}>
+          <div className="row"><label>Notes: {n}</label></div>
+          <textarea value={notes[n] ?? ""} onChange={(e) => setNotes((s) => ({ ...s, [n]: e.target.value }))} />
+        </div>
+      ))}
       <div className="row"><button className="primary" onClick={save}>Save team</button>{msg && <span className={msg.ok ? "msg" : "err"}>{msg.t}</span>}</div>
     </div>
   );

@@ -6,7 +6,7 @@ export * from "./types";
 export async function getTeams(): Promise<Team[]> {
   const [teams, members, links] = await Promise.all([
     query("SELECT * FROM teams ORDER BY number"),
-    query("SELECT id, team_id, name FROM members ORDER BY id"),
+    query("SELECT id, team_id, name, notes FROM members ORDER BY id"),
     query("SELECT id, team_id, kind, url FROM links ORDER BY id"),
   ]);
   return teams.map((t) => ({
